@@ -68,7 +68,7 @@ def main():
         convert_to_parquet(os.path.join(data_dir, f"{file_prefix}.csv"), os.path.join(output_data_dir, file_prefix))
     file_prefixes = [ "test_cite_inputs", "test_multi_inputs", "train_cite_inputs", "train_cite_targets", "train_multi_inputs", "train_multi_targets", ]
     for file_prefix in file_prefixes:
-        convert_h5_to_sparse_csr(os.path.join(DATA_DIR, f"{file_prefix}.h5"), os.path.join(OUTPUT_DATA_DIR, file_prefix))
+        convert_h5_to_sparse_csr(os.path.join(data_dir, f"{file_prefix}.h5"), os.path.join(output_data_dir, file_prefix))
 
 
 if __name__ == '__main__':

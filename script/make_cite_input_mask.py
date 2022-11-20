@@ -34,7 +34,7 @@ def make_inputs_gene_names(inputs_columns):
     inputs_gene_names = np.array(inputs_gene_names)
     return inputs_gene_names
 
-def make_targets_gene2idx(hgnc_data):
+def make_targets_gene2idx(targets_columns, hgnc_data):
     alias_symbols = {}
     for i, (row_i, row) in enumerate(hgnc_data.iterrows()):
         symbol = row["symbol"].upper()
@@ -117,7 +117,7 @@ def make_cite_inputs_targets_pair(inputs_values, targets_values, inputs_gene_nam
         if median_corr > 0.0:
             mask[input_index, target_index] = True
 
-    np.savez(os.path.join(data_dir, "cite_inputs_targets_pair3g"), mask=mask)
+    np.savez(os.path.join(out_data_dir, "cite_inputs_targets_pair3g"), mask=mask)
 
 def make_cite_inputs_targets_pair_pathway(inputs_values, targets_values, inputs_gene_names, metadata, targets_gene2idx, pathway_gene_df, out_data_dir):
     st_ids = pathway_gene_df["st_id"].unique()
@@ -186,15 +186,15 @@ def make_cite_inputs_targets_pair_pathway(inputs_values, targets_values, inputs_
             median_pvalue = selected_median_pvalues[i]
             if median_pvalue > 0.0:
                 inputs_mask[input_index] = True
-    np.savez(os.path.join(data_dir, "cite_inputs_mask2"), mask=inputs_mask)
+    np.savez(os.path.join(out_data_dir, "cite_inputs_mask2"), mask=inputs_mask)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', metavar='PATH')
     parser.add_argument('--output_data_dir', metavar='PATH')
-    parser.add_argument('--hgnc_complete_set_path', metavar='PATH')
-    parser.add_argument('--reactome_pathways_path', metavar='PATH')
+    parser.add_argument('--hgnc_complete_set_path', metavar='PATH', help="path of hgnc_complete_set.txt")
+    parser.add_argument('--reactome_pathways_path', metavar='PATH', help="path of ReactomePathways.gmt")
 
     args = parser.parse_args()
 
@@ -224,11 +224,11 @@ def main():
     metadata["group"] = group_ids
     inputs_gene_names = make_inputs_gene_names(inputs_columns=inputs_columns)
     hgnc_data = pd.read_table(args.hgnc_complete_set_path)
-    targets_gene2idx = make_targets_gene2idx(hgnc_data)
+    targets_gene2idx = make_targets_gene2idx(targets_columns=targets_columns, hgnc_data=hgnc_data)
     pathway_gene_df = read_reactome_gmt(args.reactome_pathways_path)
     os.makedirs(output_data_dir, exist_ok=True)
-    make_cite_inputs_targets_pair(inputs_values=inputs_values, targets_values=targets_values, inputs_gene_names=inputs_gene_names, targets_gene2idx=targets_gene2idx, out_data_dir=output_data_dir)
-    make_cite_inputs_targets_pair_pathway(data_dir=data_dir, targets_gene2idx=targets_gene2idx, pathway_gene_df=pathway_gene_df, out_data_dir=output_data_dir)
+    make_cite_inputs_targets_pair(inputs_values=inputs_values, targets_values=targets_values, inputs_gene_names=inputs_gene_names, targets_gene2idx=targets_gene2idx, metadata=metadata, out_data_dir=output_data_dir)
+    make_cite_inputs_targets_pair_pathway(inputs_values=inputs_values, targets_values=targets_values, inputs_gene_names=inputs_gene_names, targets_gene2idx=targets_gene2idx, metadata=metadata, pathway_gene_df=pathway_gene_df, out_data_dir=output_data_dir)
 
 
 
