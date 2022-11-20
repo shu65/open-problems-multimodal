@@ -15,7 +15,6 @@ from ss_opm.model.encoder_decoder.multi_encoder_decoder_module import MultiEncod
 from ss_opm.model.torch_dataset.multiome_dataset import MultiomeDataset
 from ss_opm.model.torch_dataset.citeseq_dataset import CITEseqDataset
 from ss_opm.model.encoder_decoder.mlp_module import MLPBModule, HierarchicalMLPBModule
-from ss_opm.model.encoder_decoder.cnn_module import CNNModule
 from ss_opm.utility.summeary_torch_model_parameters import summeary_torch_model_parameters
 from ss_opm.model.torch_helper.set_weight_decay import set_weight_decay
 from ss_opm.utility.get_metadata_pattern import get_metadata_pattern
@@ -52,18 +51,6 @@ class EncoderDecoder(object):
                 "activation": "gelu", #relu, "gelu"
                 #"norm": "batch_norm",
                 "skip": False,
-            }
-        elif params["backbone"] == "cnn":
-            backbone_params = {
-                "encoder_length": 32,
-                "encoder_n_channels": 8,
-                "encoder_n_block": 1,
-                "decoder_length": 32,
-                "decoder_n_channels": 8,
-                "decoder_n_block": 1,
-                "dropout_p": 0.0,
-                "skip": True,
-                "norm": "layer_nome",
             }
         else:
             raise RuntimeError
@@ -108,16 +95,6 @@ class EncoderDecoder(object):
                 #params['n_decoder_block'] = trial.suggest_int('n_decoder_block', 1, 5)
                 #params['skip'] = trial.suggest_categorical('skip', [False, True])
                 pass
-            elif params["backbone"] == "cnn":
-                params['encoder_length'] = trial.suggest_int('encoder_length', 4, 128)
-                params['encoder_n_channels'] = trial.suggest_int('encoder_n_channels', 4, 64)
-                params['encoder_n_block'] = trial.suggest_int('encoder_n_block', 1, 10)
-
-                params['decoder_length'] = trial.suggest_int('decoder_length', 4, 128)
-                params['decoder_n_channels'] = trial.suggest_int('decoder_n_channels', 4, 64)
-                params['decoder_n_block'] = trial.suggest_int('decoder_n_block', 1, 10)
-                params['dropout_p'] = trial.suggest_float('dropout_p', 0.1, 0.3, log=True)
-                #params['skip'] = trial.suggest_categorical('skip', [False, True])
             else:
                 raise RuntimeError()
         if debug:
@@ -169,27 +146,6 @@ class EncoderDecoder(object):
                 activation=self.params['activation'],
                 norm=self.params['norm'],
             )
-        elif self.params["backbone"] == "cnn":
-            encoder = CNNModule(
-                input_dim=x_dim,
-                output_dim=self.params['decoder_length']*self.params['decoder_n_channels'],
-                n_block=self.params['encoder_n_block'],
-                length=self.params['encoder_length'],
-                n_channels=self.params['encoder_n_channels'],
-                skip=self.params['skip'],
-                dropout_p=self.params['dropout_p'],
-                norm=self.params['norm'],
-            )
-            decoder = CNNModule(
-                input_dim=None,
-                output_dim=y_dim,
-                n_block=self.params['decoder_n_block'],
-                length=self.params['decoder_length'],
-                n_channels=self.params['decoder_n_channels'],
-                skip=self.params['skip'],
-                dropout_p=self.params['dropout_p'],
-                norm=self.params['norm'],
-            )
         else:
             raise RuntimeError
 
@@ -226,8 +182,8 @@ class EncoderDecoder(object):
     def _batch_to_device(self, batch):
         return tuple(batch[i].to(self.params["device"]) for i in range(len(batch)))
 
-    def _train_step_forward(self, batch, batch_us, training_length_ratio):
-        loss = self.model.loss(*batch, *batch_us, training_length_ratio=training_length_ratio)
+    def _train_step_forward(self, batch, training_length_ratio):
+        loss = self.model.loss(*batch, training_length_ratio=training_length_ratio)
         return loss
 
     def fit(
@@ -237,9 +193,6 @@ class EncoderDecoder(object):
             y,
             preprocessed_y,
             metadata,
-            x_us,
-            preprocessed_x_us,
-            metadata_us,
             pre_post_process
     ):
         if self.params["device"] != "cpu":
@@ -249,7 +202,6 @@ class EncoderDecoder(object):
         self.inputs_info["y_dim"] = preprocessed_y.shape[1]
 
         dataset = self._build_dataset(x=x, preprocessed_x=preprocessed_x, metadata=metadata, y=y, preprocessed_y=preprocessed_y, eval=False)
-        dataset_us = self._build_dataset(x=x_us, preprocessed_x=preprocessed_x_us, metadata=metadata_us, y=None, preprocessed_y=None, eval=True)
         print("dataset size", len(dataset))
         assert len(dataset) > 0
 
@@ -274,20 +226,11 @@ class EncoderDecoder(object):
             drop_last=True,
             num_workers=num_workers,
         )
-        data_loader_us = torch.utils.data.DataLoader(
-            dataset_us,
-            batch_size=batch_size,
-            shuffle=True,
-            drop_last=True,
-            num_workers=0
-        )
         self.model = self._build_model()
         self.model.to(device=self.params["device"])
         dummy_batch = next(iter(data_loader))
-        dummy_batch_us = next(iter(data_loader_us))
         dummy_batch = self._batch_to_device(dummy_batch)
-        dummy_batch_us = self._batch_to_device(dummy_batch_us)
-        self._train_step_forward(dummy_batch, dummy_batch_us, 1.0)
+        self._train_step_forward(dummy_batch, 1.0)
 
         lr = self.params["lr"]
         eps = self.params["eps"]
@@ -303,15 +246,9 @@ class EncoderDecoder(object):
         print("start to train")
         start_time = time.time()
         self.model.train()
-        data_loader_us_iter = iter(data_loader_us)
         for epoch in range(n_epochs):
             gc.collect()
             epoch_start_time = time.time()
-            try:
-                batch_us = data_loader_us_iter.next()
-            except StopIteration:
-                data_loader_us_iter = iter(data_loader_us)
-                batch_us = data_loader_us_iter.next()
             if epoch < self.params["burnin_length_epoch"]:
                 training_length_ratio = 0.0
             else:
@@ -319,23 +256,40 @@ class EncoderDecoder(object):
             for batch_idx, batch in enumerate(data_loader):
                 #print("epoch", epoch, "batch_idx", batch_idx)
                 batch = self._batch_to_device(batch)
-                batch_us = self._batch_to_device(batch_us)
                 optimizer.zero_grad()
-                loss, loss_corr, loss_mse, loss_res, loss_total_corr = self._train_step_forward(batch, batch_us, training_length_ratio)
-                loss.backward()
+                losses = self._train_step_forward(batch, training_length_ratio)
+                losses["loss"].backward()
                 #torch.nn.utils.clip_grad_norm_(self.model.parameters(), grad_clipping)
                 optimizer.step()
 
                 scheduler.step()
             end_time = time.time()
-            print(
-                f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
-                f"loss_corr:{loss_corr: .3f} "
-                f"loss_mse:{loss_mse: .3f} "
-                f"loss_res:{loss_res: .3f} "
-                f"loss_total_corr:{loss_total_corr: .3f} ",
-                flush=True
-            )
+            if self.params["task_type"] == "multi":
+                loss = losses["loss"]
+                loss_corr = losses["loss_corr"]
+                loss_mse = losses["loss_mse"]
+                loss_res_mse = losses["loss_res_mse"]
+                loss_total_corr = losses["loss_total_corr"]
+                print(
+                    f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
+                    f"loss_corr:{loss_corr: .3f} "
+                    f"loss_mse:{loss_mse: .3f} "
+                    f"loss_res_mse:{loss_res_mse: .3f} "
+                    f"loss_total_corr:{loss_total_corr: .3f} ",
+                    flush=True
+                )
+            elif self.params["task_type"] == "cite":
+                loss = losses["loss"]
+                loss_corr = losses["loss_corr"]
+                loss_mae = losses["loss_mae"]
+                print(
+                    f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
+                    f"loss_corr:{loss_corr: .3f} "
+                    f"loss_mse:{loss_mae: .3f} ",
+                    flush=True
+                )
+            else:
+                raise RuntimeError
         print("completed training", flush=True)
         summeary_torch_model_parameters(self.model)
         self.model.to("cpu")
