@@ -1,4 +1,5 @@
 from distutils.core import setup
+
 from setuptools import find_packages
 
 install_requires = [
@@ -14,17 +15,17 @@ install_requires = [
     "torch",
     "pyarrow",
     "fastparquet",
-    'gitpython',
+    "gitpython",
     "pytest",
 ]
 
 
 setup(
-    name='ss_opm',
-    version='0.0.2',
-    description='scripts for Kaggle Open Problems - Multimodal Single-Cell Integration',
-    author='Shuji Suzuki',
-    author_email='dolphinripple@gmail.com',
+    name="ss_opm",
+    version="0.0.2",
+    description="scripts for Kaggle Open Problems - Multimodal Single-Cell Integration",
+    author="Shuji Suzuki",
+    author_email="dolphinripple@gmail.com",
     packages=find_packages(),
     install_requires=install_requires,
 )

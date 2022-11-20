@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-
 import scipy.sparse
+
 
 def correlation_score(y_true, y_pred):
     if type(y_true) == pd.DataFrame:
@@ -9,10 +9,9 @@ def correlation_score(y_true, y_pred):
     if type(y_pred) == pd.DataFrame:
         y_pred = y_pred.values
     if isinstance(y_true, scipy.sparse.csr_matrix):
-        y_true = y.toarray()
+        y_true = y_true.toarray()
     if y_true.shape != y_pred.shape:
         raise ValueError("Shapes are different.")
-
 
     corr_sum = 0
     for i in range(len(y_true)):

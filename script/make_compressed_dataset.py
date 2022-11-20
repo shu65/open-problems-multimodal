@@ -2,16 +2,15 @@
 import argparse
 import os
 
-import pandas as pd
 import numpy as np
-import scipy.sparse
+import pandas as pd
 import scipy
+import scipy.sparse
 
 
 def convert_to_parquet(filename, out_filename):
     df = pd.read_csv(filename)
     df.to_parquet(out_filename + ".parquet")
-
 
 
 def convert_h5_to_sparse_csr(filename, out_filename, chunksize=2500):
@@ -22,7 +21,7 @@ def convert_h5_to_sparse_csr(filename, out_filename, chunksize=2500):
     chunks_index_list = []
     columns_name = None
     while True:
-        df_chunk = pd.read_hdf(filename, start=start, stop=start+chunksize)
+        df_chunk = pd.read_hdf(filename, start=start, stop=start + chunksize)
         if len(df_chunk) == 0:
             break
         chunk_data_as_sparse = scipy.sparse.csr_matrix(df_chunk.to_numpy())
@@ -47,14 +46,14 @@ def convert_h5_to_sparse_csr(filename, out_filename, chunksize=2500):
 
     all_indices = np.hstack(chunks_index_list)
 
-    scipy.sparse.save_npz(out_filename+"_values.sparse", all_data_sparse)
-    np.savez(out_filename+"_idxcol.npz", index=all_indices, columns=columns_name)
+    scipy.sparse.save_npz(out_filename + "_values.sparse", all_data_sparse)
+    np.savez(out_filename + "_idxcol.npz", index=all_indices, columns=columns_name)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', metavar='PATH')
-    parser.add_argument('--output_data_dir', metavar='PATH')
+    parser.add_argument("--data_dir", metavar="PATH")
+    parser.add_argument("--output_data_dir", metavar="PATH")
     args = parser.parse_args()
 
     data_dir = args.data_dir
@@ -66,10 +65,17 @@ def main():
     file_prefixes = ["evaluation_ids", "metadata", "sample_submission"]
     for file_prefix in file_prefixes:
         convert_to_parquet(os.path.join(data_dir, f"{file_prefix}.csv"), os.path.join(output_data_dir, file_prefix))
-    file_prefixes = [ "test_cite_inputs", "test_multi_inputs", "train_cite_inputs", "train_cite_targets", "train_multi_inputs", "train_multi_targets", ]
+    file_prefixes = [
+        "test_cite_inputs",
+        "test_multi_inputs",
+        "train_cite_inputs",
+        "train_cite_targets",
+        "train_multi_inputs",
+        "train_multi_targets",
+    ]
     for file_prefix in file_prefixes:
         convert_h5_to_sparse_csr(os.path.join(data_dir, f"{file_prefix}.h5"), os.path.join(output_data_dir, file_prefix))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

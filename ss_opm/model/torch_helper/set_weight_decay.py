@@ -3,6 +3,7 @@ from torch import nn
 from ss_opm.model.encoder_decoder.cite_encoder_decoder_module import CiteEncoderDecoderModule
 from ss_opm.model.encoder_decoder.multi_encoder_decoder_module import MultiEncoderDecoderModule
 
+
 def set_weight_decay(module, weight_decay):
     params_decay = []
     params_no_decay = []
@@ -30,6 +31,6 @@ def set_weight_decay(module, weight_decay):
             ignoring_params.append(m.y_scale)
             params_no_decay.append(m.gender_embedding)
     assert len(list(module.parameters())) == len(params_decay) + len(params_no_decay) + len(ignoring_params)
-    params = [dict(params=params_decay, weight_decay=weight_decay), dict(params=params_no_decay, weight_decay=.0)]
+    params = [dict(params=params_decay, weight_decay=weight_decay), dict(params=params_no_decay, weight_decay=0.0)]
 
     return params

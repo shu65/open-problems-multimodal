@@ -1,28 +1,25 @@
 import torch
 from torch import nn
-from torch.nn import functional as F
 
-from ss_opm.model.torch_helper.correlation_loss import correlation_loss
-from ss_opm.utility.metadata_utility import CELL_TYPES
-from ss_opm.model.torch_helper.row_normalize import row_normalize
 from ss_opm.model.torch_dataset.citeseq_dataset import METADATA_KEYS
+from ss_opm.model.torch_helper.correlation_loss import correlation_loss
+from ss_opm.model.torch_helper.row_normalize import row_normalize
 
 
 class CiteEncoderDecoderModule(nn.Module):
-
     def __init__(
-            self,
-            x_dim,
-            y_dim,
-            y_statistic,
-            encoder_h_dim,
-            decoder_h_dim,
-            n_decoder_block,
-            inputs_decomposer_components,
-            targets_decomposer_components,
-            encoder,
-            decoder,
-            simsiam=False,
+        self,
+        x_dim,
+        y_dim,
+        y_statistic,
+        encoder_h_dim,
+        decoder_h_dim,
+        n_decoder_block,
+        inputs_decomposer_components,
+        targets_decomposer_components,
+        encoder,
+        decoder,
+        simsiam=False,
     ):
         super(CiteEncoderDecoderModule, self).__init__()
         self.x_dim = x_dim
@@ -40,7 +37,7 @@ class CiteEncoderDecoderModule(nn.Module):
         self.gender_embedding = torch.nn.Parameter(torch.rand(2, encoder_h_dim))
         self.encoder_in_fc = nn.Linear(x_dim + self.info_dim, encoder_h_dim)
         decoder_out_fcs = []
-        for i in range(n_decoder_block + 1):
+        for _ in range(n_decoder_block + 1):
             decoder_out_fcs.append(nn.Linear(decoder_h_dim, y_dim))
         self.decoder_out_fcs = nn.ModuleList(decoder_out_fcs)
 
@@ -55,7 +52,7 @@ class CiteEncoderDecoderModule(nn.Module):
         h = z
         _, hs = self.decoder(h)
         ys = []
-        for i, h in enumerate(hs):
+        for i in range(len(hs)):
             new_h = hs[i]
             y_base = self.decoder_out_fcs[i](new_h)
             y = y_base * self.y_scale[None, :] + self.y_loc[None, :]
@@ -67,7 +64,7 @@ class CiteEncoderDecoderModule(nn.Module):
         y_preds = self._decode(z, None, None)
         return y_preds
 
-    def loss(self, x,  gender_id, info, y, preprocessed_y, training_length_ratio):
+    def loss(self, x, gender_id, info, y, preprocessed_y, training_length_ratio):
         ret = {
             "loss": 0,
             "loss_corr": 0,
@@ -81,18 +78,20 @@ class CiteEncoderDecoderModule(nn.Module):
             postprocessed_y_pred = torch.matmul(y_pred, self.targets_decomposer_components) + self.targets_global_median[None, :]
             ret["loss_corr"] = ret["loss_corr"] + self.correlation_loss_func(postprocessed_y_pred, y)
             ret["loss_mae"] = ret["loss_mae"] + self.mae_loss_func(y_pred, preprocessed_y)
-        w = (1 - training_length_ratio)**2
+        w = (1 - training_length_ratio) ** 2
         ret["loss_corr"] /= len(y_preds)
         ret["loss"] = ret["loss"] + ret["loss_corr"]
         ret["loss_mae"] /= len(y_preds)
-        ret["loss"] = ret["loss"] + w*ret["loss_mae"]
+        ret["loss"] = ret["loss"] + w * ret["loss_mae"]
         return ret
 
     def predict(self, x, gender_id, info):
         y_preds = self(x, gender_id, info)
         postprocessed_y_pred = None
         for i in range(len(y_preds)):
-            new_postprocessed_y_pred = row_normalize(torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :])
+            new_postprocessed_y_pred = row_normalize(
+                torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :]
+            )
             if postprocessed_y_pred is None:
                 postprocessed_y_pred = new_postprocessed_y_pred
             else:

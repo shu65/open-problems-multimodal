@@ -1,9 +1,10 @@
 import numpy as np
 
+
 def get_group_id(metadata):
-    days = [ 2,  3,  4,  7, 10]
+    days = [2, 3, 4, 7, 10]
     donors = [27678, 32606, 13176, 31800]
-    technologies = ['citeseq', 'multiome']
+    technologies = ["citeseq", "multiome"]
 
     group_id = 0
     ret = np.full(len(metadata), fill_value=-1)

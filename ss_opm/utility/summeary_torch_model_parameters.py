@@ -1,5 +1,6 @@
 import torch
 
+
 def summeary_torch_model_parameters(model):
     print("model parameter summary:")
     for name, param in model.named_parameters():

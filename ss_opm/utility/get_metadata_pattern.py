@@ -1,4 +1,4 @@
-from ss_opm.utility.metadata_utility import CELL_TYPES, MALE_DONOR_IDS, FEMALE_DONOR_IDS
+from ss_opm.utility.metadata_utility import FEMALE_DONOR_IDS, MALE_DONOR_IDS
 
 DONOR_METADATA_PATTERNS = [
     {

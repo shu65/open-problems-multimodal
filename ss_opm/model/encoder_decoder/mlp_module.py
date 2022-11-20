@@ -1,10 +1,7 @@
-import torch
 from torch import nn
-from torch.nn import functional as F
 
 
 class LinearBlock(nn.Module):
-
     def __init__(self, h_dim=128, skip=False, dropout_p=0.1, activation="relu", norm="none"):
         super(LinearBlock, self).__init__()
         self.skip = skip
@@ -26,7 +23,7 @@ class LinearBlock(nn.Module):
         if activation == "relu":
             self.act = nn.ReLU()
         elif activation == "gelu":
-            #print("activation", activation)
+            # print("activation", activation)
             self.act = nn.GELU()
         else:
             raise RuntimeError()
@@ -44,13 +41,13 @@ class LinearBlock(nn.Module):
             h = h + h_prev
         return h
 
-class MLPBModule(nn.Module):
 
+class MLPBModule(nn.Module):
     def __init__(self, input_dim, output_dim, n_block, h_dim=128, skip=False, dropout_p=0.1, activation="relu", norm="bn"):
         super(MLPBModule, self).__init__()
         self.in_fc = None
         if input_dim is not None:
-            self.in_fc =  nn.Linear(input_dim, h_dim)
+            self.in_fc = nn.Linear(input_dim, h_dim)
         layers = []
         for _ in range(n_block):
             layers.append(LinearBlock(h_dim=h_dim, skip=skip, dropout_p=dropout_p, activation=activation, norm=norm))
@@ -63,21 +60,21 @@ class MLPBModule(nn.Module):
         h = x
         if self.in_fc is not None:
             h = self.in_fc(h)
-        for l in self.layers:
-            h = l(h)
+        for layer in self.layers:
+            h = layer(h)
         if self.out_fc is not None:
             y = self.out_fc(h)
         else:
             y = h
         return y, h
 
-class HierarchicalMLPBModule(nn.Module):
 
+class HierarchicalMLPBModule(nn.Module):
     def __init__(self, input_dim, output_dim, n_block, h_dim=128, skip=False, dropout_p=0.1, activation="relu", norm="bn"):
         super(HierarchicalMLPBModule, self).__init__()
         self.in_fc = None
         if input_dim is not None:
-            self.in_fc =  nn.Linear(input_dim, h_dim)
+            self.in_fc = nn.Linear(input_dim, h_dim)
         layers = []
         for _ in range(n_block):
             layers.append(LinearBlock(h_dim=h_dim, skip=skip, dropout_p=dropout_p, activation=activation, norm=norm))
@@ -91,8 +88,8 @@ class HierarchicalMLPBModule(nn.Module):
         if self.in_fc is not None:
             h = self.in_fc(h)
         hs = [h]
-        for l in self.layers:
-            h = l(h)
+        for layer in self.layers:
+            h = layer(h)
             hs.append(h)
         if self.out_fc is not None:
             y = self.out_fc(h)
