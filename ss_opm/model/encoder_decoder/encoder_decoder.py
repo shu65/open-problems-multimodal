@@ -15,7 +15,6 @@ from ss_opm.model.encoder_decoder.multi_encoder_decoder_module import MultiEncod
 from ss_opm.model.torch_dataset.multiome_dataset import MultiomeDataset
 from ss_opm.model.torch_dataset.citeseq_dataset import CITEseqDataset
 from ss_opm.model.encoder_decoder.mlp_module import MLPBModule, HierarchicalMLPBModule
-from ss_opm.model.encoder_decoder.cnn_module import CNNModule
 from ss_opm.utility.summeary_torch_model_parameters import summeary_torch_model_parameters
 from ss_opm.model.torch_helper.set_weight_decay import set_weight_decay
 from ss_opm.utility.get_metadata_pattern import get_metadata_pattern
@@ -52,18 +51,6 @@ class EncoderDecoder(object):
                 "activation": "gelu", #relu, "gelu"
                 #"norm": "batch_norm",
                 "skip": False,
-            }
-        elif params["backbone"] == "cnn":
-            backbone_params = {
-                "encoder_length": 32,
-                "encoder_n_channels": 8,
-                "encoder_n_block": 1,
-                "decoder_length": 32,
-                "decoder_n_channels": 8,
-                "decoder_n_block": 1,
-                "dropout_p": 0.0,
-                "skip": True,
-                "norm": "layer_nome",
             }
         else:
             raise RuntimeError
@@ -108,16 +95,6 @@ class EncoderDecoder(object):
                 #params['n_decoder_block'] = trial.suggest_int('n_decoder_block', 1, 5)
                 #params['skip'] = trial.suggest_categorical('skip', [False, True])
                 pass
-            elif params["backbone"] == "cnn":
-                params['encoder_length'] = trial.suggest_int('encoder_length', 4, 128)
-                params['encoder_n_channels'] = trial.suggest_int('encoder_n_channels', 4, 64)
-                params['encoder_n_block'] = trial.suggest_int('encoder_n_block', 1, 10)
-
-                params['decoder_length'] = trial.suggest_int('decoder_length', 4, 128)
-                params['decoder_n_channels'] = trial.suggest_int('decoder_n_channels', 4, 64)
-                params['decoder_n_block'] = trial.suggest_int('decoder_n_block', 1, 10)
-                params['dropout_p'] = trial.suggest_float('dropout_p', 0.1, 0.3, log=True)
-                #params['skip'] = trial.suggest_categorical('skip', [False, True])
             else:
                 raise RuntimeError()
         if debug:
@@ -167,27 +144,6 @@ class EncoderDecoder(object):
                 skip=self.params['skip'],
                 dropout_p=self.params['decoder_dropout_p'],
                 activation=self.params['activation'],
-                norm=self.params['norm'],
-            )
-        elif self.params["backbone"] == "cnn":
-            encoder = CNNModule(
-                input_dim=x_dim,
-                output_dim=self.params['decoder_length']*self.params['decoder_n_channels'],
-                n_block=self.params['encoder_n_block'],
-                length=self.params['encoder_length'],
-                n_channels=self.params['encoder_n_channels'],
-                skip=self.params['skip'],
-                dropout_p=self.params['dropout_p'],
-                norm=self.params['norm'],
-            )
-            decoder = CNNModule(
-                input_dim=None,
-                output_dim=y_dim,
-                n_block=self.params['decoder_n_block'],
-                length=self.params['decoder_length'],
-                n_channels=self.params['decoder_n_channels'],
-                skip=self.params['skip'],
-                dropout_p=self.params['dropout_p'],
                 norm=self.params['norm'],
             )
         else:

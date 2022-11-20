@@ -4,7 +4,6 @@ from torch.nn import functional as F
 
 from ss_opm.model.torch_helper.correlation_loss import correlation_loss
 from ss_opm.utility.metadata_utility import CELL_TYPES
-from ss_opm.model.encoder_decoder.sim_siam_module import SimSiamModule, PredictionModule
 from ss_opm.model.torch_helper.row_normalize import row_normalize
 from ss_opm.model.torch_dataset.citeseq_dataset import METADATA_KEYS
 

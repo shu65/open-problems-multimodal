@@ -23,10 +23,7 @@ import git
 from ss_opm.metric.correlation_score import correlation_score
 from ss_opm.model.encoder_decoder.encoder_decoder import EncoderDecoder
 from ss_opm.utility.load_dataset import load_dataset
-from ss_opm.model.lgbm import LGBM
-from ss_opm.pre_post_processing.dummy_pre_post_processing import DummyPrePostProcessing
 from ss_opm.pre_post_processing.pre_post_processing import PrePostProcessing
-from ss_opm.model.ridge import Ridge
 from ss_opm.utility.row_normalize import row_normalize
 from ss_opm.utility.get_group_id import get_group_id
 from ss_opm.utility.set_seed import set_seed
@@ -322,7 +319,7 @@ def main():
     parser.add_argument('--n_model_train_samples', type=int, default=-1)
     parser.add_argument('--debug', action="store_true")
     parser.add_argument('--distributed_study_name')
-    parser.add_argument('--model', default="lgbm")
+    parser.add_argument('--model', default="ead")
     parser.add_argument('--snapshot', default=None)
     parser.add_argument('--param_path', metavar='PATH')
     parser.add_argument('--out_dir', metavar='PATH', default="result")
@@ -362,15 +359,8 @@ def main():
     train_inputs, train_metadata, train_target = load_dataset(data_dir=data_dir, task_type=args.task_type, split="train", cell_type=cell_type_names[args.cell_type])
     test_inputs, test_metadata, _ = load_dataset(data_dir=data_dir, task_type=args.task_type, split="test")
 
-    if args.model == "lgbm":
-        model_class = LGBM
-        pre_post_process_class = PrePostProcessing
-    elif args.model == "ead":
+    if args.model == "ead":
         model_class = EncoderDecoder
-        #pre_post_process_class = DummyPrePostProcessing
-        pre_post_process_class = PrePostProcessing
-    elif args.model == "ridge":
-        model_class = Ridge
         pre_post_process_class = PrePostProcessing
     else:
         raise ValueError
