@@ -190,9 +190,9 @@ def make_cite_batch_statistics(metadata, output_data_dir):
     normalized_batch_statistics.to_parquet(out_filename)
 
 def make_cite_batch_inputs_median(data_dir, metadata, output_data_dir):
-    train_values = scipy.sparse.load_npz(os.path.join(data_dir, "train_cite_inputs_values.sparse.npz"))
-    test_values = scipy.sparse.load_npz(os.path.join(data_dir, "test_cite_inputs_values.sparse.npz"))
-
+    train_values = scipy.sparse.load_npz(os.path.join(data_dir, "train_cite_inputs_values.sparse.npz")).toarray()
+    test_values = scipy.sparse.load_npz(os.path.join(data_dir, "test_cite_inputs_values.sparse.npz")).toarray()
+    
     values = np.vstack((train_values, test_values))
     median_norm_values = np.log1p(median_normalize(np.expm1(values)))
 
