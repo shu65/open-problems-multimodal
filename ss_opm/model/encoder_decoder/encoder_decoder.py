@@ -1,23 +1,20 @@
 import gc
-import os
-import time
 import json
+import os
 import pickle
-import gc
+import time
 
 import numpy as np
 import torch
-from torch import nn
 
-from ss_opm.utility.metadata_utility import CELL_TYPES
 from ss_opm.model.encoder_decoder.cite_encoder_decoder_module import CiteEncoderDecoderModule
+from ss_opm.model.encoder_decoder.mlp_module import HierarchicalMLPBModule, MLPBModule
 from ss_opm.model.encoder_decoder.multi_encoder_decoder_module import MultiEncoderDecoderModule
-from ss_opm.model.torch_dataset.multiome_dataset import MultiomeDataset
 from ss_opm.model.torch_dataset.citeseq_dataset import CITEseqDataset
-from ss_opm.model.encoder_decoder.mlp_module import MLPBModule, HierarchicalMLPBModule
-from ss_opm.utility.summeary_torch_model_parameters import summeary_torch_model_parameters
+from ss_opm.model.torch_dataset.multiome_dataset import MultiomeDataset
 from ss_opm.model.torch_helper.set_weight_decay import set_weight_decay
 from ss_opm.utility.get_metadata_pattern import get_metadata_pattern
+from ss_opm.utility.summeary_torch_model_parameters import summeary_torch_model_parameters
 
 
 class EncoderDecoder(object):
@@ -41,15 +38,15 @@ class EncoderDecoder(object):
         }
         if params["backbone"] == "mlp":
             backbone_params = {
-                "encoder_h_dim": 2048, #128,
-                "decoder_h_dim": 2048, #128,
+                "encoder_h_dim": 2048,  # 128,
+                "decoder_h_dim": 2048,  # 128,
                 "encoder_dropout_p": 0.0,
                 "decoder_dropout_p": 0.0,
                 "n_encoder_block": 1,
                 "n_decoder_block": 5,
                 "norm": "layer_nome",
-                "activation": "gelu", #relu, "gelu"
-                #"norm": "batch_norm",
+                "activation": "gelu",  # relu, "gelu"
+                # "norm": "batch_norm",
                 "skip": False,
             }
         else:
@@ -80,20 +77,20 @@ class EncoderDecoder(object):
         if metadata_pattern_id is not None:
             params["selected_metadata"] = get_metadata_pattern(metadata_pattern_id=metadata_pattern_id)
         if trial is not None:
-            #params['train_batch_size'] = trial.suggest_categorical('train_batch_size', [64,])
-            #params['lr'] = trial.suggest_float('lr', 1e-5, 1e-3, log=True)
-            #params['eps'] = trial.suggest_float('eps', 1e-9, 1e-5, log=True)
-            #params['weight_decay'] = trial.suggest_float('weight_decay', 1e-8, 1e-4, log=True)
-            #params['max_inputs_values_noisze_sigma'] = trial.suggest_float('max_inputs_values_noisze_sigma', 1e-3, 1e-0, log=True)
-            #params['max_cutout_p'] = trial.suggest_float('max_cutout_p', 0.05, 0.3)
+            # params['train_batch_size'] = trial.suggest_categorical('train_batch_size', [64,])
+            # params['lr'] = trial.suggest_float('lr', 1e-5, 1e-3, log=True)
+            # params['eps'] = trial.suggest_float('eps', 1e-9, 1e-5, log=True)
+            # params['weight_decay'] = trial.suggest_float('weight_decay', 1e-8, 1e-4, log=True)
+            # params['max_inputs_values_noisze_sigma'] = trial.suggest_float('max_inputs_values_noisze_sigma', 1e-3, 1e-0, log=True)
+            # params['max_cutout_p'] = trial.suggest_float('max_cutout_p', 0.05, 0.3)
             if params["backbone"] == "mlp":
-                #params['encoder_h_dim'] = trial.suggest_int('encoder_h_dim', 1024, 2048)
-                #params['decoder_h_dim'] = trial.suggest_int('decoder_h_dim', 128, 2048)
-                #params['encoder_dropout_p'] = trial.suggest_float('encoder_dropout_p', 0.3, 0.7)
-                #params['decoder_dropout_p'] = trial.suggest_float('decoder_dropout_p', 0.1, 0.4)
-                #params['n_encoder_block'] = trial.suggest_int('n_encoder_block', 1, 3)
-                #params['n_decoder_block'] = trial.suggest_int('n_decoder_block', 1, 5)
-                #params['skip'] = trial.suggest_categorical('skip', [False, True])
+                # params['encoder_h_dim'] = trial.suggest_int('encoder_h_dim', 1024, 2048)
+                # params['decoder_h_dim'] = trial.suggest_int('decoder_h_dim', 128, 2048)
+                # params['encoder_dropout_p'] = trial.suggest_float('encoder_dropout_p', 0.3, 0.7)
+                # params['decoder_dropout_p'] = trial.suggest_float('decoder_dropout_p', 0.1, 0.4)
+                # params['n_encoder_block'] = trial.suggest_int('n_encoder_block', 1, 3)
+                # params['n_decoder_block'] = trial.suggest_int('n_decoder_block', 1, 5)
+                # params['skip'] = trial.suggest_categorical('skip', [False, True])
                 pass
             else:
                 raise RuntimeError()
@@ -101,12 +98,12 @@ class EncoderDecoder(object):
             params["epoch"] = 10
             params["encoder_h_dim"] = 128
             params["decoder_h_dim"] = 128
-            #pass
+            # pass
         return params
 
     def __init__(self, params):
         self.params = params
-        self.inputs_info ={}
+        self.inputs_info = {}
         self.model = None
 
     def _build_model(self):
@@ -123,28 +120,28 @@ class EncoderDecoder(object):
             y_statistic[k] = torch.tensor(v)
         if self.params["backbone"] == "mlp":
             encoder = MLPBModule(
-                #input_dim=x_dim,
-                input_dim = None,
+                # input_dim=x_dim,
+                input_dim=None,
                 output_dim=self.params["encoder_h_dim"],
-                n_block=self.params['n_encoder_block'],
+                n_block=self.params["n_encoder_block"],
                 h_dim=self.params["encoder_h_dim"],
-                skip=self.params['skip'],
-                dropout_p=self.params['encoder_dropout_p'],
-                activation=self.params['activation'],
-                norm=self.params['norm'],
+                skip=self.params["skip"],
+                dropout_p=self.params["encoder_dropout_p"],
+                activation=self.params["activation"],
+                norm=self.params["norm"],
             )
 
             decoder = HierarchicalMLPBModule(
                 input_dim=self.params["encoder_h_dim"],
-                #output_dim=y_dim,
-                #output_dim=y_dim,
+                # output_dim=y_dim,
+                # output_dim=y_dim,
                 output_dim=None,
-                n_block=self.params['n_decoder_block'],
+                n_block=self.params["n_decoder_block"],
                 h_dim=self.params["decoder_h_dim"],
-                skip=self.params['skip'],
-                dropout_p=self.params['decoder_dropout_p'],
-                activation=self.params['activation'],
-                norm=self.params['norm'],
+                skip=self.params["skip"],
+                dropout_p=self.params["decoder_dropout_p"],
+                activation=self.params["activation"],
+                norm=self.params["norm"],
             )
         else:
             raise RuntimeError
@@ -154,9 +151,9 @@ class EncoderDecoder(object):
                 x_dim=x_dim,
                 y_dim=y_dim,
                 y_statistic=y_statistic,
-                encoder_h_dim=self.params['encoder_h_dim'],
-                decoder_h_dim=self.params['decoder_h_dim'],
-                n_decoder_block=self.params['n_decoder_block'],
+                encoder_h_dim=self.params["encoder_h_dim"],
+                decoder_h_dim=self.params["decoder_h_dim"],
+                n_decoder_block=self.params["n_decoder_block"],
                 encoder=encoder,
                 decoder=decoder,
                 inputs_decomposer_components=inputs_decomposer_components,
@@ -167,9 +164,9 @@ class EncoderDecoder(object):
                 x_dim=x_dim,
                 y_dim=y_dim,
                 y_statistic=y_statistic,
-                encoder_h_dim=self.params['encoder_h_dim'],
-                decoder_h_dim=self.params['decoder_h_dim'],
-                n_decoder_block=self.params['n_decoder_block'],
+                encoder_h_dim=self.params["encoder_h_dim"],
+                decoder_h_dim=self.params["decoder_h_dim"],
+                n_decoder_block=self.params["n_decoder_block"],
                 encoder=encoder,
                 decoder=decoder,
                 inputs_decomposer_components=inputs_decomposer_components,
@@ -186,22 +183,16 @@ class EncoderDecoder(object):
         loss = self.model.loss(*batch, training_length_ratio=training_length_ratio)
         return loss
 
-    def fit(
-            self,
-            x,
-            preprocessed_x,
-            y,
-            preprocessed_y,
-            metadata,
-            pre_post_process
-    ):
+    def fit(self, x, preprocessed_x, y, preprocessed_y, metadata, pre_post_process):
         if self.params["device"] != "cpu":
             gc.collect()
             torch.cuda.empty_cache()
         self.inputs_info["x_dim"] = preprocessed_x.shape[1]
         self.inputs_info["y_dim"] = preprocessed_y.shape[1]
 
-        dataset = self._build_dataset(x=x, preprocessed_x=preprocessed_x, metadata=metadata, y=y, preprocessed_y=preprocessed_y, eval=False)
+        dataset = self._build_dataset(
+            x=x, preprocessed_x=preprocessed_x, metadata=metadata, y=y, preprocessed_y=preprocessed_y, eval=False
+        )
         print("dataset size", len(dataset))
         assert len(dataset) > 0
 
@@ -241,7 +232,9 @@ class EncoderDecoder(object):
 
         pct_start = self.params["pct_start"]
         total_steps = n_epochs * (len(dataset) // batch_size)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, total_steps=total_steps, pct_start=pct_start)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer=optimizer, max_lr=lr, total_steps=total_steps, pct_start=pct_start
+        )
 
         print("start to train")
         start_time = time.time()
@@ -252,14 +245,15 @@ class EncoderDecoder(object):
             if epoch < self.params["burnin_length_epoch"]:
                 training_length_ratio = 0.0
             else:
-                training_length_ratio = (epoch - self.params["burnin_length_epoch"])/(n_epochs - self.params["burnin_length_epoch"])
-            for batch_idx, batch in enumerate(data_loader):
-                #print("epoch", epoch, "batch_idx", batch_idx)
+                training_length_ratio = (epoch - self.params["burnin_length_epoch"]) / (
+                    n_epochs - self.params["burnin_length_epoch"]
+                )
+            for _, batch in enumerate(data_loader):
                 batch = self._batch_to_device(batch)
                 optimizer.zero_grad()
                 losses = self._train_step_forward(batch, training_length_ratio)
                 losses["loss"].backward()
-                #torch.nn.utils.clip_grad_norm_(self.model.parameters(), grad_clipping)
+                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), grad_clipping)
                 optimizer.step()
 
                 scheduler.step()
@@ -276,7 +270,7 @@ class EncoderDecoder(object):
                     f"loss_mse:{loss_mse: .3f} "
                     f"loss_res_mse:{loss_res_mse: .3f} "
                     f"loss_total_corr:{loss_total_corr: .3f} ",
-                    flush=True
+                    flush=True,
                 )
             elif self.params["task_type"] == "cite":
                 loss = losses["loss"]
@@ -286,7 +280,7 @@ class EncoderDecoder(object):
                     f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
                     f"loss_corr:{loss_corr: .3f} "
                     f"loss_mse:{loss_mae: .3f} ",
-                    flush=True
+                    flush=True,
                 )
             else:
                 raise RuntimeError
@@ -307,7 +301,7 @@ class EncoderDecoder(object):
                 metadata=metadata,
                 targets_values=y,
                 preprocessed_targets_values=preprocessed_y,
-                selected_metadata=selected_metadata
+                selected_metadata=selected_metadata,
             )
         elif self.params["task_type"] == "cite":
             dataset = CITEseqDataset(
@@ -316,7 +310,7 @@ class EncoderDecoder(object):
                 metadata=metadata,
                 targets_values=y,
                 preprocessed_targets_values=preprocessed_y,
-                selected_metadata=selected_metadata
+                selected_metadata=selected_metadata,
             )
         else:
             raise ValueError
@@ -329,19 +323,17 @@ class EncoderDecoder(object):
             torch.cuda.empty_cache()
         self.model = self.model.to(self.params["device"])
         self.model.eval()
-        dataset = self._build_dataset(x=x, preprocessed_x=preprocessed_x, metadata=metadata, y=None, preprocessed_y=None, eval=True)
-        test_batch_size = self.params["test_batch_size"]
-        data_loader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=test_batch_size,
-            num_workers=0
+        dataset = self._build_dataset(
+            x=x, preprocessed_x=preprocessed_x, metadata=metadata, y=None, preprocessed_y=None, eval=True
         )
+        test_batch_size = self.params["test_batch_size"]
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=test_batch_size, num_workers=0)
         y_pred = []
         with torch.no_grad():
             for batch in data_loader:
                 batch = self._batch_to_device(batch)
                 y_batch_pred = self.model.predict(*batch[0:3])
-                y_batch_pred = y_batch_pred.to('cpu').detach().numpy()
+                y_batch_pred = y_batch_pred.to("cpu").detach().numpy()
                 y_pred.append(y_batch_pred)
         y_pred = np.vstack(y_pred)
         self.model.to("cpu")

@@ -1,13 +1,6 @@
-import os
 import unittest
 
-import torch
-from torch import utils
-import numpy as np
-import scipy.sparse
-import pandas as pd
-
-from ss_opm.utility.get_metadata_pattern import generate_metadata_patterns, get_metadata_pattern
+from ss_opm.utility.get_metadata_pattern import generate_metadata_patterns
 
 
 class GenerateMetadataPatternsTest(unittest.TestCase):
@@ -24,5 +17,6 @@ class GenerateMetadataPatternsTest(unittest.TestCase):
         print(patterns)
         self.assertEqual(len(patterns), 24)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

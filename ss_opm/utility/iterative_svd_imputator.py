@@ -1,4 +1,3 @@
-import numpy as np
 from sklearn.decomposition import TruncatedSVD
 
 _default_svd_params = {
@@ -8,8 +7,8 @@ _default_svd_params = {
     "n_iter": 7,
 }
 
-class IterativeSVDImputator(object):
 
+class IterativeSVDImputator(object):
     def __init__(self, svd_params=_default_svd_params, iters=2):
         self.missing_values = 0.0
         self.svd_params = svd_params

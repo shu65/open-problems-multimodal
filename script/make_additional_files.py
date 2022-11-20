@@ -2,15 +2,14 @@
 import argparse
 import os
 
-import pandas as pd
 import numpy as np
-import scipy.sparse
+import pandas as pd
 import scipy
+import scipy.sparse
 from sklearn.decomposition import TruncatedSVD
 
 from ss_opm.utility.get_group_id import get_group_id
 from ss_opm.utility.nonzero_median_normalize import median_normalize
-
 
 
 def make_cite_cell_statistics(data_dir, output_data_dir):
@@ -29,8 +28,8 @@ def make_cite_cell_statistics(data_dir, output_data_dir):
     stds = np.empty(cite_input_index.shape[0], dtype=float)
 
     for i in range(len(cite_input_index)):
-        row_nonzero_values = cite_values.data[cite_values.indptr[i]:cite_values.indptr[i+1]]
-        nonzero_ratios[i] = len(row_nonzero_values)/cite_values.shape[1]
+        row_nonzero_values = cite_values.data[cite_values.indptr[i] : cite_values.indptr[i + 1]]
+        nonzero_ratios[i] = len(row_nonzero_values) / cite_values.shape[1]
         q_values = np.quantile(row_nonzero_values, q=[0.25, 0.5, 0.75])
         nonzero_q25[i] = q_values[0]
         nonzero_q50[i] = q_values[1]
@@ -38,22 +37,25 @@ def make_cite_cell_statistics(data_dir, output_data_dir):
         row_values = cite_values[i, :].toarray()
         means[i] = np.mean(row_values)
         stds[i] = np.std(row_values)
-        #break
+        # break
 
-    cell_statistics = pd.DataFrame({
-        "nonzero_ratio": nonzero_ratios,
-        "nonzero_q25": nonzero_q25,
-        "nonzero_q50": nonzero_q50,
-        "nonzero_q75": nonzero_q75,
-        "mean": means,
-        "std": stds,
-    }, index=cite_input_index)
+    cell_statistics = pd.DataFrame(
+        {
+            "nonzero_ratio": nonzero_ratios,
+            "nonzero_q25": nonzero_q25,
+            "nonzero_q50": nonzero_q50,
+            "nonzero_q75": nonzero_q75,
+            "mean": means,
+            "std": stds,
+        },
+        index=cite_input_index,
+    )
 
-    normalized_cell_statistics = cell_statistics.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
-    out_filename = os.path.join(output_data_dir,"cite_cell_statistics.parquet")
+    normalized_cell_statistics = cell_statistics.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
+    out_filename = os.path.join(output_data_dir, "cite_cell_statistics.parquet")
     cell_statistics.to_parquet(out_filename)
 
-    out_filename = os.path.join(output_data_dir,"normalized_cite_cell_statistics.parquet")
+    out_filename = os.path.join(output_data_dir, "normalized_cite_cell_statistics.parquet")
     normalized_cell_statistics.to_parquet(out_filename)
 
 
@@ -71,7 +73,7 @@ def make_multi_cell_statistics(data_dir, output_data_dir):
     ch_masks = {}
 
     for i in range(len(multi_input_columns)):
-        ch_name = multi_input_columns[i][0:multi_input_columns[i].find(":")]
+        ch_name = multi_input_columns[i][0 : multi_input_columns[i].find(":")]
         if ch_name not in ch_masks:
             ch_masks[ch_name] = np.zeros(len(multi_input_columns), dtype=bool)
         ch_masks[ch_name][i] = True
@@ -89,8 +91,8 @@ def make_multi_cell_statistics(data_dir, output_data_dir):
         ch_stats["ch_nonzero_ratio_" + ch_name] = np.empty(multi_input_index.shape[0], dtype=float)
 
     for i in range(len(multi_input_index)):
-        row_nonzero_values = multi_values.data[multi_values.indptr[i]:multi_values.indptr[i+1]]
-        nonzero_ratios[i] = np.log1p(len(row_nonzero_values)/multi_values.shape[1])
+        row_nonzero_values = multi_values.data[multi_values.indptr[i] : multi_values.indptr[i + 1]]
+        nonzero_ratios[i] = np.log1p(len(row_nonzero_values) / multi_values.shape[1])
         q_values = np.quantile(row_nonzero_values, q=[0.25, 0.5, 0.75])
         nonzero_q25[i] = q_values[0]
         nonzero_q50[i] = q_values[1]
@@ -101,8 +103,8 @@ def make_multi_cell_statistics(data_dir, output_data_dir):
         for ch_name, ch_mask in ch_masks.items():
             nonzero_counts_in_ch = (row_values[ch_mask] > 0).sum()
             ch_counts = ch_mask.sum()
-            ch_stats["ch_nonzero_ratio_" + ch_name][i] = np.log1p(nonzero_counts_in_ch/ch_counts)
-        #break
+            ch_stats["ch_nonzero_ratio_" + ch_name][i] = np.log1p(nonzero_counts_in_ch / ch_counts)
+        # break
 
     cell_statistics_dict = {
         "nonzero_ratio": nonzero_ratios,
@@ -117,12 +119,12 @@ def make_multi_cell_statistics(data_dir, output_data_dir):
         cell_statistics_dict[k] = v
 
     cell_statistics = pd.DataFrame(cell_statistics_dict, index=multi_input_index)
-    normalized_cell_statistics = cell_statistics.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
+    normalized_cell_statistics = cell_statistics.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
 
-    out_filename = os.path.join(data_dir,"multi_cell_statistics.parquet")
+    out_filename = os.path.join(data_dir, "multi_cell_statistics.parquet")
     cell_statistics.to_parquet(out_filename)
 
-    out_filename = os.path.join(data_dir,"normalized_multi_cell_statistics.parquet")
+    out_filename = os.path.join(data_dir, "normalized_multi_cell_statistics.parquet")
     normalized_cell_statistics.to_parquet(out_filename)
 
 
@@ -135,7 +137,7 @@ def make_multi_batch_statistics(metadata, output_data_dir):
         selector = metadata["group"] == group_id
         cell_type_counts = metadata[selector]["cell_type"].value_counts()
         sum_cell_type_counts = cell_type_counts.sum()
-        row = cell_type_counts/sum_cell_type_counts
+        row = cell_type_counts / sum_cell_type_counts
         row["cell_count"] = sum_cell_type_counts
         df_list.append(row)
 
@@ -149,11 +151,11 @@ def make_multi_batch_statistics(metadata, output_data_dir):
         else:
             columns.append("cell_ratio_" + c)
     batch_statistics.columns = columns
-    normalized_batch_statistics = batch_statistics.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
-    out_filename = os.path.join(output_data_dir,"multi_batch_statistics.parquet")
+    normalized_batch_statistics = batch_statistics.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
+    out_filename = os.path.join(output_data_dir, "multi_batch_statistics.parquet")
     batch_statistics.to_parquet(out_filename)
 
-    out_filename = os.path.join(output_data_dir,"normalized_multi_batch_statistics.parquet")
+    out_filename = os.path.join(output_data_dir, "normalized_multi_batch_statistics.parquet")
     normalized_batch_statistics.to_parquet(out_filename)
 
 
@@ -166,7 +168,7 @@ def make_cite_batch_statistics(metadata, output_data_dir):
         selector = metadata["group"] == group_id
         cell_type_counts = metadata[selector]["cell_type"].value_counts()
         sum_cell_type_counts = cell_type_counts.sum()
-        row = cell_type_counts/sum_cell_type_counts
+        row = cell_type_counts / sum_cell_type_counts
         row["cell_count"] = sum_cell_type_counts
         df_list.append(row)
 
@@ -182,17 +184,18 @@ def make_cite_batch_statistics(metadata, output_data_dir):
     columns.append("cell_count")
     batch_statistics.columns = columns
 
-    normalized_batch_statistics = batch_statistics.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
-    out_filename = os.path.join(output_data_dir,"cite_batch_statistics.parquet")
+    normalized_batch_statistics = batch_statistics.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
+    out_filename = os.path.join(output_data_dir, "cite_batch_statistics.parquet")
     batch_statistics.to_parquet(out_filename)
 
-    out_filename = os.path.join(output_data_dir,"normalized_cite_batch_statistics.parquet")
+    out_filename = os.path.join(output_data_dir, "normalized_cite_batch_statistics.parquet")
     normalized_batch_statistics.to_parquet(out_filename)
+
 
 def make_cite_batch_inputs_median(data_dir, metadata, output_data_dir):
     train_values = scipy.sparse.load_npz(os.path.join(data_dir, "train_cite_inputs_values.sparse.npz")).toarray()
     test_values = scipy.sparse.load_npz(os.path.join(data_dir, "test_cite_inputs_values.sparse.npz")).toarray()
-    
+
     values = np.vstack((train_values, test_values))
     median_norm_values = np.log1p(median_normalize(np.expm1(values)))
 
@@ -212,7 +215,7 @@ def make_cite_batch_inputs_median(data_dir, metadata, output_data_dir):
         selected_values[selected_values == 0.0] = np.nan
         selected_values = np.nanmedian(selected_values, axis=0)
         median_norm_values_batch.append(selected_values)
-        #break
+        # break
 
     median_norm_values_batch = np.vstack(median_norm_values_batch)
     median_norm_values_batch[np.isnan(median_norm_values_batch)] = 0.0
@@ -221,25 +224,24 @@ def make_cite_batch_inputs_median(data_dir, metadata, output_data_dir):
         "n_components": 8,
         "random_state": 42,
     }
-    decomposer = TruncatedSVD(
-        **params
-    )
+    decomposer = TruncatedSVD(**params)
     decomposer.fit(median_norm_values_batch)
     transformed_values = decomposer.transform(median_norm_values_batch)
     columns = [f"batch_sv{i}" for i in range(transformed_values.shape[1])]
     df = pd.DataFrame(transformed_values, index=unique_group_ids, columns=columns)
     df.index.name = "group"
-    normalized_df = df.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
-    out_filename = os.path.join(output_data_dir,"cite_batch_inputs.parquet")
+    normalized_df = df.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
+    out_filename = os.path.join(output_data_dir, "cite_batch_inputs.parquet")
     df.to_parquet(out_filename)
 
-    out_filename = os.path.join(output_data_dir,"normalized_cite_batch_inputs.parquet")
+    out_filename = os.path.join(output_data_dir, "normalized_cite_batch_inputs.parquet")
     normalized_df.to_parquet(out_filename)
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', metavar='PATH')
-    parser.add_argument('--output_data_dir', metavar='PATH')
+    parser.add_argument("--data_dir", metavar="PATH")
+    parser.add_argument("--output_data_dir", metavar="PATH")
     args = parser.parse_args()
 
     data_dir = args.data_dir
@@ -262,6 +264,5 @@ def main():
     make_cite_batch_inputs_median(data_dir=data_dir, metadata=metadata, output_data_dir=output_data_dir)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

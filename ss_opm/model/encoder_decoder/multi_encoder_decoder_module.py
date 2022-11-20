@@ -1,29 +1,24 @@
 import torch
 from torch import nn
-from torch.nn import functional as F
-
-from ss_opm.model.torch_helper.correlation_loss import correlation_loss
-from ss_opm.utility.metadata_utility import CELL_TYPES
-from ss_opm.model.encoder_decoder.mlp_module import MLPBModule
-from ss_opm.model.torch_helper.row_normalize import row_normalize
 
 from ss_opm.model.torch_dataset.multiome_dataset import METADATA_KEYS
+from ss_opm.model.torch_helper.correlation_loss import correlation_loss
+from ss_opm.model.torch_helper.row_normalize import row_normalize
 
 
 class MultiEncoderDecoderModule(nn.Module):
-
     def __init__(
-            self,
-            x_dim,
-            y_dim,
-            y_statistic,
-            encoder_h_dim,
-            decoder_h_dim,
-            n_decoder_block,
-            inputs_decomposer_components,
-            targets_decomposer_components,
-            encoder,
-            decoder,
+        self,
+        x_dim,
+        y_dim,
+        y_statistic,
+        encoder_h_dim,
+        decoder_h_dim,
+        n_decoder_block,
+        inputs_decomposer_components,
+        targets_decomposer_components,
+        encoder,
+        decoder,
     ):
         super(MultiEncoderDecoderModule, self).__init__()
         self.x_dim = x_dim
@@ -43,7 +38,7 @@ class MultiEncoderDecoderModule(nn.Module):
         self.encoder_in_fc = nn.Linear(x_dim + self.info_dim, encoder_h_dim)
         decoder_out_fcs = []
         decoder_out_res_fcs = []
-        for i in range(n_decoder_block + 1):
+        for _ in range(n_decoder_block + 1):
             decoder_out_fcs.append(nn.Linear(decoder_h_dim, y_dim))
             decoder_out_res_fcs.append(nn.Linear(decoder_h_dim, self.targets_decomposer_components.shape[1]))
         self.decoder_out_fcs = nn.ModuleList(decoder_out_fcs)
@@ -61,7 +56,7 @@ class MultiEncoderDecoderModule(nn.Module):
         _, hs = self.decoder(h)
         ys = []
         y_reses = []
-        for i, h in enumerate(hs):
+        for i in range(len(hs)):
             new_h = hs[i]
             y_base = self.decoder_out_fcs[i](new_h)
             y = y_base * self.y_scale[None, :] + self.y_loc[None, :]
@@ -75,7 +70,7 @@ class MultiEncoderDecoderModule(nn.Module):
         y_preds, y_res_preds = self._decode(z, None, None)
         return y_preds, y_res_preds
 
-    def loss(self, x,  gender_id, info, y, preprocessed_y, training_length_ratio):
+    def loss(self, x, gender_id, info, y, preprocessed_y, training_length_ratio):
         ret = {
             "loss": 0,
             "loss_corr": 0,
@@ -98,13 +93,13 @@ class MultiEncoderDecoderModule(nn.Module):
             ret["loss_mse"] = ret["loss_mse"] + self.mse_loss_func(y_pred, preprocessed_y)
             ret["loss_res_mse"] = ret["loss_res_mse"] + self.mse_loss_func(y_res, y_res_pred)
             ret["loss_total_corr"] = ret["loss_total_corr"] + self.correlation_loss_func(y_total_pred, y)
-        w = (1 - training_length_ratio)**2
+        w = (1 - training_length_ratio) ** 2
         ret["loss_corr"] /= len(y_preds)
         ret["loss"] = ret["loss"] + ret["loss_corr"]
         ret["loss_mse"] /= len(y_preds)
-        ret["loss"] = ret["loss"] + w*ret["loss_mse"]
+        ret["loss"] = ret["loss"] + w * ret["loss_mse"]
         ret["loss_res_mse"] /= len(y_preds)
-        ret["loss"] = ret["loss"] + w*ret["loss_res_mse"]
+        ret["loss"] = ret["loss"] + w * ret["loss_res_mse"]
         ret["loss_total_corr"] /= len(y_preds)
         ret["loss"] = ret["loss"] + ret["loss_total_corr"]
         return ret
@@ -113,7 +108,9 @@ class MultiEncoderDecoderModule(nn.Module):
         y_preds, y_res_preds = self(x, gender_id, info)
         postprocessed_y_pred = None
         for i in range(len(y_preds)):
-            new_postprocessed_y_pred = row_normalize(torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :])
+            new_postprocessed_y_pred = row_normalize(
+                torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :]
+            )
             new_postprocessed_y_pred += y_res_preds[i]
             new_postprocessed_y_pred = row_normalize(new_postprocessed_y_pred)
             if postprocessed_y_pred is None:

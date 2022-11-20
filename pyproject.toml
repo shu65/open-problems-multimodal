@@ -1,0 +1,13 @@
+[tool.pysen]
+version = "0.10"
+
+[tool.pysen.lint]
+enable_black = true
+enable_flake8 = true
+enable_isort = true
+enable_mypy = false
+mypy_preset = "strict"
+line_length = 130
+py_version = "py38"
+isort_known_first_party = ["ss_opm"]
+

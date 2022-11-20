@@ -1,13 +1,9 @@
-import os
 import unittest
 
-import torch
-from torch import utils
 import numpy as np
-import scipy.sparse
-import pandas as pd
 
 from ss_opm.utility.row_normalize import row_normalize
+
 
 class RowNormalizeTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -29,5 +25,6 @@ class RowNormalizeTest(unittest.TestCase):
             rtol=1e-6,
         )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,13 @@
-import time
-import os
 import gc
+import os
+import time
 
 import numpy as np
 import pandas as pd
 import scipy.sparse
 
 from ss_opm.utility.get_group_id import get_group_id
+
 
 def load_dataset(data_dir, task_type, cell_type="all", split="train"):
     if (task_type == "multi") and (split == "train"):
@@ -49,11 +50,11 @@ def load_dataset(data_dir, task_type, cell_type="all", split="train"):
     metadata_df = pd.merge(metadata_df, cell_statistics_df, left_index=True, right_index=True)
     group_ids = get_group_id(metadata_df)
     metadata_df["group"] = group_ids
-    #print("before", metadata_df["group"].unique())
+    # print("before", metadata_df["group"].unique())
     if batch_statistics_path is not None:
         batch_statistics_df = pd.read_parquet(os.path.join(data_dir, batch_statistics_path))
         metadata_df = pd.merge(metadata_df, batch_statistics_df, left_on="group", right_index=True)
-    #print("after", metadata_df["group"].unique())
+    # print("after", metadata_df["group"].unique())
     if batch_inputs_path is not None:
         batch_inputs_df = pd.read_parquet(os.path.join(data_dir, batch_inputs_path))
         metadata_df = pd.merge(metadata_df, batch_inputs_df, left_on="group", right_index=True)
