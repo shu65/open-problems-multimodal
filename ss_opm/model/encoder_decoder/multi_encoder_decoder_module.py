@@ -76,11 +76,13 @@ class MultiEncoderDecoderModule(nn.Module):
         return y_preds, y_res_preds
 
     def loss(self, x,  gender_id, info, y, preprocessed_y, training_length_ratio):
-        loss = 0
-        loss_corr = 0
-        loss_mse = 0
-        loss_res = 0.0
-        loss_total_corr = 0
+        ret = {
+            "loss": 0,
+            "loss_corr": 0,
+            "loss_mse": 0,
+            "loss_res_mse": 0,
+            "loss_total_corr": 0,
+        }
 
         z = self._encode(x=x, gender_id=gender_id, info=info)
         y_preds, y_res_preds = self._decode(z, None, None)
@@ -92,20 +94,20 @@ class MultiEncoderDecoderModule(nn.Module):
             normalized_postprocessed_y_pred_detached = row_normalize(postprocessed_y_pred.detach())
             y_res = normalized_y - normalized_postprocessed_y_pred_detached
             y_total_pred = normalized_postprocessed_y_pred_detached + y_res_pred
-            loss_corr = loss_corr + self.correlation_loss_func(postprocessed_y_pred, y)
-            loss_mse = loss_mse + self.mse_loss_func(y_pred, preprocessed_y)
-            loss_res = loss_res + self.mse_loss_func(y_res, y_res_pred)
-            loss_total_corr = loss_total_corr + self.correlation_loss_func(y_total_pred, y)
+            ret["loss_corr"] = ret["loss_corr"] + self.correlation_loss_func(postprocessed_y_pred, y)
+            ret["loss_mse"] = ret["loss_mse"] + self.mse_loss_func(y_pred, preprocessed_y)
+            ret["loss_res_mse"] = ret["loss_res_mse"] + self.mse_loss_func(y_res, y_res_pred)
+            ret["loss_total_corr"] = ret["loss_total_corr"] + self.correlation_loss_func(y_total_pred, y)
         w = (1 - training_length_ratio)**2
-        loss_corr /= len(y_preds)
-        loss = loss + loss_corr
-        loss_mse /= len(y_preds)
-        loss = loss + w*loss_mse
-        loss_res /= len(y_preds)
-        loss = loss + w*loss_res
-        loss_total_corr /= len(y_preds)
-        loss = loss + loss_total_corr
-        return loss, loss_corr, loss_mse, loss_res, loss_total_corr
+        ret["loss_corr"] /= len(y_preds)
+        ret["loss"] = ret["loss"] + ret["loss_corr"]
+        ret["loss_mse"] /= len(y_preds)
+        ret["loss"] = ret["loss"] + w*ret["loss_mse"]
+        ret["loss_res_mse"] /= len(y_preds)
+        ret["loss"] = ret["loss"] + w*ret["loss_res_mse"]
+        ret["loss_total_corr"] /= len(y_preds)
+        ret["loss"] = ret["loss"] + ret["loss_total_corr"]
+        return ret
 
     def predict(self, x, gender_id, info):
         y_preds, y_res_preds = self(x, gender_id, info)

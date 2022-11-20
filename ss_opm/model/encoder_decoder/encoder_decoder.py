@@ -257,21 +257,39 @@ class EncoderDecoder(object):
                 #print("epoch", epoch, "batch_idx", batch_idx)
                 batch = self._batch_to_device(batch)
                 optimizer.zero_grad()
-                loss, loss_corr, loss_mse, loss_res, loss_total_corr = self._train_step_forward(batch, training_length_ratio)
-                loss.backward()
+                losses = self._train_step_forward(batch, training_length_ratio)
+                losses["loss"].backward()
                 #torch.nn.utils.clip_grad_norm_(self.model.parameters(), grad_clipping)
                 optimizer.step()
 
                 scheduler.step()
             end_time = time.time()
-            print(
-                f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
-                f"loss_corr:{loss_corr: .3f} "
-                f"loss_mse:{loss_mse: .3f} "
-                f"loss_res:{loss_res: .3f} "
-                f"loss_total_corr:{loss_total_corr: .3f} ",
-                flush=True
-            )
+            if self.params["task_type"] == "multi":
+                loss = losses["loss"]
+                loss_corr = losses["loss_corr"]
+                loss_mse = losses["loss_mse"]
+                loss_res_mse = losses["loss_res_mse"]
+                loss_total_corr = losses["loss_total_corr"]
+                print(
+                    f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
+                    f"loss_corr:{loss_corr: .3f} "
+                    f"loss_mse:{loss_mse: .3f} "
+                    f"loss_res_mse:{loss_res_mse: .3f} "
+                    f"loss_total_corr:{loss_total_corr: .3f} ",
+                    flush=True
+                )
+            elif self.params["task_type"] == "cite":
+                loss = losses["loss"]
+                loss_corr = losses["loss_corr"]
+                loss_mae = losses["loss_mae"]
+                print(
+                    f"epoch: {epoch} total time: {end_time - start_time:.1f}, epoch time: {end_time - epoch_start_time:.1f}, loss:{loss: .3f} "
+                    f"loss_corr:{loss_corr: .3f} "
+                    f"loss_mse:{loss_mae: .3f} ",
+                    flush=True
+                )
+            else:
+                raise RuntimeError
         print("completed training", flush=True)
         summeary_torch_model_parameters(self.model)
         self.model.to("cpu")

@@ -68,24 +68,25 @@ class CiteEncoderDecoderModule(nn.Module):
         return y_preds
 
     def loss(self, x,  gender_id, info, y, preprocessed_y, training_length_ratio):
-        loss = 0
-        loss_corr = 0
-        loss_mse = 0
-        loss_res = 0.0
+        ret = {
+            "loss": 0,
+            "loss_corr": 0,
+            "loss_mae": 0,
+        }
         z = self._encode(x=x, gender_id=gender_id, info=info)
         y_preds = self._decode(z, None, None)
 
         for i in range(len(y_preds)):
             y_pred = y_preds[i]
             postprocessed_y_pred = torch.matmul(y_pred, self.targets_decomposer_components) + self.targets_global_median[None, :]
-            loss_corr = loss_corr + self.correlation_loss_func(postprocessed_y_pred, y)
-            loss_mse = loss_mse + self.mae_loss_func(y_pred, preprocessed_y)
+            ret["loss_corr"] = ret["loss_corr"] + self.correlation_loss_func(postprocessed_y_pred, y)
+            ret["loss_mae"] = ret["loss_mae"] + self.mae_loss_func(y_pred, preprocessed_y)
         w = (1 - training_length_ratio)**2
-        loss_corr /= len(y_preds)
-        loss = loss + loss_corr
-        loss_mse /= len(y_preds)
-        loss = loss + w*loss_mse
-        return loss, loss_corr, loss_mse, 0.0, 0.0
+        ret["loss_corr"] /= len(y_preds)
+        ret["loss"] = ret["loss"] + ret["loss_corr"]
+        ret["loss_mae"] /= len(y_preds)
+        ret["loss"] = ret["loss"] + w*ret["loss_mae"]
+        return ret
 
     def predict(self, x, gender_id, info):
         y_preds = self(x, gender_id, info)
