@@ -6,7 +6,7 @@ import scipy.sparse
 import numpy as np
 import pandas as pd
 
-from ss_opm.utility.targets_values_normalize import targets_values_normalize
+from ss_opm.utility.row_normalize import row_normalize
 from ss_opm.utility.estimate_library_size import estimate_library_size
 from ss_opm.utility.nonzero_median_normalize import median_normalize, row_quantile_normalize
 from ss_opm.utility.iterative_svd_imputator import IterativeSVDImputator
@@ -102,7 +102,7 @@ class PrePostProcessing(object):
                     self.preprocesses["targets_imputator"].fit(transformed_targets_values)
                 transformed_targets_values = self.preprocesses["targets_imputator"].transform(transformed_targets_values)
                 if self.params["use_targets_normalization"]:
-                    transformed_targets_values = targets_values_normalize(transformed_targets_values)
+                    transformed_targets_values = row_normalize(transformed_targets_values)
                 if fitting:
                     unique_group_ids = targets_metadata["group"].unique()
                     targets_batch_medians = {}
@@ -124,7 +124,7 @@ class PrePostProcessing(object):
                 transformed_targets_values = row_values_clip(transformed_targets_values, min_q=0.01, max_q=0.99)
                 transformed_targets_values = median_normalize(transformed_targets_values, ignore_zero=False)
                 if self.params["use_targets_normalization"]:
-                    transformed_targets_values = targets_values_normalize(transformed_targets_values)
+                    transformed_targets_values = row_normalize(transformed_targets_values)
                 if fitting:
                     unique_group_ids = targets_metadata["group"].unique()
                     targets_batch_medians = {}
