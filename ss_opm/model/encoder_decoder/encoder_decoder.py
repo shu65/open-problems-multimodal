@@ -182,8 +182,8 @@ class EncoderDecoder(object):
     def _batch_to_device(self, batch):
         return tuple(batch[i].to(self.params["device"]) for i in range(len(batch)))
 
-    def _train_step_forward(self, batch, batch_us, training_length_ratio):
-        loss = self.model.loss(*batch, *batch_us, training_length_ratio=training_length_ratio)
+    def _train_step_forward(self, batch, training_length_ratio):
+        loss = self.model.loss(*batch, training_length_ratio=training_length_ratio)
         return loss
 
     def fit(
@@ -193,9 +193,6 @@ class EncoderDecoder(object):
             y,
             preprocessed_y,
             metadata,
-            x_us,
-            preprocessed_x_us,
-            metadata_us,
             pre_post_process
     ):
         if self.params["device"] != "cpu":
@@ -205,7 +202,6 @@ class EncoderDecoder(object):
         self.inputs_info["y_dim"] = preprocessed_y.shape[1]
 
         dataset = self._build_dataset(x=x, preprocessed_x=preprocessed_x, metadata=metadata, y=y, preprocessed_y=preprocessed_y, eval=False)
-        dataset_us = self._build_dataset(x=x_us, preprocessed_x=preprocessed_x_us, metadata=metadata_us, y=None, preprocessed_y=None, eval=True)
         print("dataset size", len(dataset))
         assert len(dataset) > 0
 
@@ -230,20 +226,11 @@ class EncoderDecoder(object):
             drop_last=True,
             num_workers=num_workers,
         )
-        data_loader_us = torch.utils.data.DataLoader(
-            dataset_us,
-            batch_size=batch_size,
-            shuffle=True,
-            drop_last=True,
-            num_workers=0
-        )
         self.model = self._build_model()
         self.model.to(device=self.params["device"])
         dummy_batch = next(iter(data_loader))
-        dummy_batch_us = next(iter(data_loader_us))
         dummy_batch = self._batch_to_device(dummy_batch)
-        dummy_batch_us = self._batch_to_device(dummy_batch_us)
-        self._train_step_forward(dummy_batch, dummy_batch_us, 1.0)
+        self._train_step_forward(dummy_batch, 1.0)
 
         lr = self.params["lr"]
         eps = self.params["eps"]
@@ -259,15 +246,9 @@ class EncoderDecoder(object):
         print("start to train")
         start_time = time.time()
         self.model.train()
-        data_loader_us_iter = iter(data_loader_us)
         for epoch in range(n_epochs):
             gc.collect()
             epoch_start_time = time.time()
-            try:
-                batch_us = data_loader_us_iter.next()
-            except StopIteration:
-                data_loader_us_iter = iter(data_loader_us)
-                batch_us = data_loader_us_iter.next()
             if epoch < self.params["burnin_length_epoch"]:
                 training_length_ratio = 0.0
             else:
@@ -275,9 +256,8 @@ class EncoderDecoder(object):
             for batch_idx, batch in enumerate(data_loader):
                 #print("epoch", epoch, "batch_idx", batch_idx)
                 batch = self._batch_to_device(batch)
-                batch_us = self._batch_to_device(batch_us)
                 optimizer.zero_grad()
-                loss, loss_corr, loss_mse, loss_res, loss_total_corr = self._train_step_forward(batch, batch_us, training_length_ratio)
+                loss, loss_corr, loss_mse, loss_res, loss_total_corr = self._train_step_forward(batch, training_length_ratio)
                 loss.backward()
                 #torch.nn.utils.clip_grad_norm_(self.model.parameters(), grad_clipping)
                 optimizer.step()

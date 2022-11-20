@@ -116,8 +116,6 @@ class CrossVaridation(object):
             x_val = x[idx_va]
             y_val = y[idx_va].toarray()
             metadata_val = metadata.iloc[idx_va, :]
-            x_us = scipy.sparse.vstack([x_val, x_test])
-            metadata_us = pd.concat([metadata_val, metadata_test])
             for bagging_i in range(_n_bagging):
                 gc.collect()
                 if n_bagging > 0:
@@ -143,9 +141,6 @@ class CrossVaridation(object):
                 preprocessed_x_train, preprocessed_y_train = pre_post_process.preprocess(
                     inputs_values=x_train_bagging, targets_values=y_train_bagging, metadata=metadata_train_bagging,
                 )
-                preprocessed_x_us, _ = pre_post_process.preprocess(
-                    inputs_values=x_us, targets_values=None, metadata=metadata_us,
-                )
                 model = build_model(params=params["model"])
                 print(f"model input shape X:{preprocessed_x_train.shape} Y:{preprocessed_y_train.shape}")
                 model.fit(
@@ -153,9 +148,6 @@ class CrossVaridation(object):
                     y=y_train_bagging,
                     preprocessed_x=preprocessed_x_train,
                     preprocessed_y=preprocessed_y_train,
-                    x_us=x_us,
-                    preprocessed_x_us=preprocessed_x_us,
-                    metadata_us=metadata_us,
                     metadata=metadata_train_bagging,
                     pre_post_process=pre_post_process,
                 )
@@ -262,8 +254,6 @@ class Objective(object):
         self.y_val = y[val_index, :].toarray()
         self.metadata_train = metadata.iloc[train_index, :]
         self.metadata_val =  metadata.iloc[val_index, :]
-        self.x_us = scipy.sparse.vstack([self.x_val, x_test])
-        self.metadata_us = pd.concat([self.metadata_val, metadata_test])
         self.get_params=get_params
         self.build_model = build_model
         self.build_pre_post_process = build_pre_post_process
@@ -282,10 +272,6 @@ class Objective(object):
         preprocessed_inputs_values, preprocessed_targets_values = pre_post_process.preprocess(
             inputs_values=self.x_train, targets_values=self.y_train, metadata=self.metadata_train,
         )
-        preprocessed_inputs_values_us, _ = pre_post_process.preprocess(
-            inputs_values=self.x_us, targets_values=None, metadata=self.metadata_us,
-        )
-
 
         print(f"model input shape X:{preprocessed_inputs_values.shape} Y:{preprocessed_targets_values.shape}")
         model.fit(
@@ -294,9 +280,6 @@ class Objective(object):
             x=self.x_train,
             y=self.y_train,
             metadata=self.metadata_train,
-            x_us=self.x_us,
-            preprocessed_x_us=preprocessed_inputs_values_us,
-            metadata_us=self.metadata_us,
             pre_post_process=pre_post_process,
         )
         preprocessed_inputs_values, _ = pre_post_process.preprocess(
@@ -532,9 +515,6 @@ def main():
                 y=train_target,
                 preprocessed_x=preprocessed_inputs_values,
                 preprocessed_y=preprocessed_targets_values,
-                x_us=test_inputs,
-                preprocessed_x_us=preprocessed_test_inputs,
-                metadata_us=test_metadata,
                 metadata=train_metadata,
                 pre_post_process=pre_post_process,
             )

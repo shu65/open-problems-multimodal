@@ -67,7 +67,7 @@ class CiteEncoderDecoderModule(nn.Module):
         y_preds = self._decode(z, None, None)
         return y_preds
 
-    def loss(self, x,  gender_id, info, y, preprocessed_y, x_us, gender_id_us, info_us, training_length_ratio):
+    def loss(self, x,  gender_id, info, y, preprocessed_y, training_length_ratio):
         loss = 0
         loss_corr = 0
         loss_mse = 0
