@@ -23,11 +23,8 @@ import git
 from ss_opm.metric.correlation_score import correlation_score
 from ss_opm.model.encoder_decoder.encoder_decoder import EncoderDecoder
 from ss_opm.utility.load_dataset import load_dataset
-from ss_opm.model.lgbm import LGBM
-from ss_opm.pre_post_processing.dummy_pre_post_processing import DummyPrePostProcessing
 from ss_opm.pre_post_processing.pre_post_processing import PrePostProcessing
-from ss_opm.model.ridge import Ridge
-from ss_opm.utility.targets_values_normalize import targets_values_normalize
+from ss_opm.utility.row_normalize import row_normalize
 from ss_opm.utility.get_group_id import get_group_id
 from ss_opm.utility.set_seed import set_seed
 from ss_opm.utility.get_selector_with_metadata_pattern import get_selector_with_metadata_pattern
@@ -119,8 +116,6 @@ class CrossVaridation(object):
             x_val = x[idx_va]
             y_val = y[idx_va].toarray()
             metadata_val = metadata.iloc[idx_va, :]
-            x_us = scipy.sparse.vstack([x_val, x_test])
-            metadata_us = pd.concat([metadata_val, metadata_test])
             for bagging_i in range(_n_bagging):
                 gc.collect()
                 if n_bagging > 0:
@@ -146,9 +141,6 @@ class CrossVaridation(object):
                 preprocessed_x_train, preprocessed_y_train = pre_post_process.preprocess(
                     inputs_values=x_train_bagging, targets_values=y_train_bagging, metadata=metadata_train_bagging,
                 )
-                preprocessed_x_us, _ = pre_post_process.preprocess(
-                    inputs_values=x_us, targets_values=None, metadata=metadata_us,
-                )
                 model = build_model(params=params["model"])
                 print(f"model input shape X:{preprocessed_x_train.shape} Y:{preprocessed_y_train.shape}")
                 model.fit(
@@ -156,9 +148,6 @@ class CrossVaridation(object):
                     y=y_train_bagging,
                     preprocessed_x=preprocessed_x_train,
                     preprocessed_y=preprocessed_y_train,
-                    x_us=x_us,
-                    preprocessed_x_us=preprocessed_x_us,
-                    metadata_us=metadata_us,
                     metadata=metadata_train_bagging,
                     pre_post_process=pre_post_process,
                 )
@@ -265,8 +254,6 @@ class Objective(object):
         self.y_val = y[val_index, :].toarray()
         self.metadata_train = metadata.iloc[train_index, :]
         self.metadata_val =  metadata.iloc[val_index, :]
-        self.x_us = scipy.sparse.vstack([self.x_val, x_test])
-        self.metadata_us = pd.concat([self.metadata_val, metadata_test])
         self.get_params=get_params
         self.build_model = build_model
         self.build_pre_post_process = build_pre_post_process
@@ -285,10 +272,6 @@ class Objective(object):
         preprocessed_inputs_values, preprocessed_targets_values = pre_post_process.preprocess(
             inputs_values=self.x_train, targets_values=self.y_train, metadata=self.metadata_train,
         )
-        preprocessed_inputs_values_us, _ = pre_post_process.preprocess(
-            inputs_values=self.x_us, targets_values=None, metadata=self.metadata_us,
-        )
-
 
         print(f"model input shape X:{preprocessed_inputs_values.shape} Y:{preprocessed_targets_values.shape}")
         model.fit(
@@ -297,9 +280,6 @@ class Objective(object):
             x=self.x_train,
             y=self.y_train,
             metadata=self.metadata_train,
-            x_us=self.x_us,
-            preprocessed_x_us=preprocessed_inputs_values_us,
-            metadata_us=self.metadata_us,
             pre_post_process=pre_post_process,
         )
         preprocessed_inputs_values, _ = pre_post_process.preprocess(
@@ -322,7 +302,7 @@ def main():
     parser.add_argument('--n_model_train_samples', type=int, default=-1)
     parser.add_argument('--debug', action="store_true")
     parser.add_argument('--distributed_study_name')
-    parser.add_argument('--model', default="lgbm")
+    parser.add_argument('--model', default="ead")
     parser.add_argument('--snapshot', default=None)
     parser.add_argument('--param_path', metavar='PATH')
     parser.add_argument('--out_dir', metavar='PATH', default="result")
@@ -362,15 +342,8 @@ def main():
     train_inputs, train_metadata, train_target = load_dataset(data_dir=data_dir, task_type=args.task_type, split="train", cell_type=cell_type_names[args.cell_type])
     test_inputs, test_metadata, _ = load_dataset(data_dir=data_dir, task_type=args.task_type, split="test")
 
-    if args.model == "lgbm":
-        model_class = LGBM
-        pre_post_process_class = PrePostProcessing
-    elif args.model == "ead":
+    if args.model == "ead":
         model_class = EncoderDecoder
-        #pre_post_process_class = DummyPrePostProcessing
-        pre_post_process_class = PrePostProcessing
-    elif args.model == "ridge":
-        model_class = Ridge
         pre_post_process_class = PrePostProcessing
     else:
         raise ValueError
@@ -542,9 +515,6 @@ def main():
                 y=train_target,
                 preprocessed_x=preprocessed_inputs_values,
                 preprocessed_y=preprocessed_targets_values,
-                x_us=test_inputs,
-                preprocessed_x_us=preprocessed_test_inputs,
-                metadata_us=test_metadata,
                 metadata=train_metadata,
                 pre_post_process=pre_post_process,
             )
