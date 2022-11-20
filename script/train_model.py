@@ -27,7 +27,7 @@ from ss_opm.model.lgbm import LGBM
 from ss_opm.pre_post_processing.dummy_pre_post_processing import DummyPrePostProcessing
 from ss_opm.pre_post_processing.pre_post_processing import PrePostProcessing
 from ss_opm.model.ridge import Ridge
-from ss_opm.utility.targets_values_normalize import targets_values_normalize
+from ss_opm.utility.row_normalize import row_normalize
 from ss_opm.utility.get_group_id import get_group_id
 from ss_opm.utility.set_seed import set_seed
 from ss_opm.utility.get_selector_with_metadata_pattern import get_selector_with_metadata_pattern

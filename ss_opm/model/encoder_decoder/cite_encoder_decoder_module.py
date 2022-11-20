@@ -2,10 +2,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ss_opm.model.torch_function import correl_loss
+from ss_opm.model.torch_helper.correlation_loss import correlation_loss
 from ss_opm.utility.metadata_utility import CELL_TYPES
 from ss_opm.model.encoder_decoder.sim_siam_module import SimSiamModule, PredictionModule
-from ss_opm.utility.targets_values_normalize import targets_values_normalize_torch
+from ss_opm.model.torch_helper.row_normalize import row_normalize
 from ss_opm.model.torch_dataset.citeseq_dataset import METADATA_KEYS
 
 
@@ -36,8 +36,7 @@ class CiteEncoderDecoderModule(nn.Module):
         self.inputs_decomposer_components = torch.nn.Parameter(inputs_decomposer_components, requires_grad=False)
         self.targets_decomposer_components = torch.nn.Parameter(targets_decomposer_components, requires_grad=False)
         self.targets_global_median = torch.nn.Parameter(y_statistic["targets_global_median"], requires_grad=False)
-        self.correl_loss_func = correl_loss
-        #self.mse_loss_func = nn.MSELoss()
+        self.correlation_loss_func = correlation_loss
         self.mae_loss_func = nn.L1Loss()
         self.gender_embedding = torch.nn.Parameter(torch.rand(2, encoder_h_dim))
         self.encoder_in_fc = nn.Linear(x_dim + self.info_dim, encoder_h_dim)
@@ -80,7 +79,7 @@ class CiteEncoderDecoderModule(nn.Module):
         for i in range(len(y_preds)):
             y_pred = y_preds[i]
             postprocessed_y_pred = torch.matmul(y_pred, self.targets_decomposer_components) + self.targets_global_median[None, :]
-            loss_corr = loss_corr + self.correl_loss_func(postprocessed_y_pred, y)
+            loss_corr = loss_corr + self.correlation_loss_func(postprocessed_y_pred, y)
             loss_mse = loss_mse + self.mae_loss_func(y_pred, preprocessed_y)
         w = (1 - training_length_ratio)**2
         loss_corr /= len(y_preds)
@@ -93,7 +92,7 @@ class CiteEncoderDecoderModule(nn.Module):
         y_preds = self(x, gender_id, info)
         postprocessed_y_pred = None
         for i in range(len(y_preds)):
-            new_postprocessed_y_pred = targets_values_normalize_torch(torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :])
+            new_postprocessed_y_pred = row_normalize(torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :])
             if postprocessed_y_pred is None:
                 postprocessed_y_pred = new_postprocessed_y_pred
             else:

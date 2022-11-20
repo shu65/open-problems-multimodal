@@ -2,11 +2,11 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ss_opm.model.torch_function import correl_loss
+from ss_opm.model.torch_helper.correlation_loss import correlation_loss
 from ss_opm.utility.metadata_utility import CELL_TYPES
 from ss_opm.model.encoder_decoder.mlp_module import MLPBModule
 from ss_opm.model.encoder_decoder.sim_siam_module import SimSiamModule, PredictionModule
-from ss_opm.utility.targets_values_normalize import targets_values_normalize_torch
+from ss_opm.model.torch_helper.row_normalize import row_normalize
 
 from ss_opm.model.torch_dataset.multiome_dataset import METADATA_KEYS
 
@@ -38,7 +38,7 @@ class MultiEncoderDecoderModule(nn.Module):
         self.inputs_decomposer_components = torch.nn.Parameter(inputs_decomposer_components, requires_grad=False)
         self.targets_decomposer_components = torch.nn.Parameter(targets_decomposer_components, requires_grad=False)
         self.targets_global_median = torch.nn.Parameter(y_statistic["targets_global_median"], requires_grad=False)
-        self.correl_loss_func = correl_loss
+        self.correlation_loss_func = correlation_loss
         self.mse_loss_func = nn.MSELoss()
         self.gender_embedding = torch.nn.Parameter(torch.rand(2, encoder_h_dim))
         self.encoder_in_fc = nn.Linear(x_dim + self.info_dim, encoder_h_dim)
@@ -85,18 +85,18 @@ class MultiEncoderDecoderModule(nn.Module):
 
         z = self._encode(x=x, gender_id=gender_id, info=info)
         y_preds, y_res_preds = self._decode(z, None, None)
-        normalized_y = targets_values_normalize_torch(y)
+        normalized_y = row_normalize(y)
         for i in range(len(y_preds)):
             y_pred = y_preds[i]
             y_res_pred = y_res_preds[i]
             postprocessed_y_pred = torch.matmul(y_pred, self.targets_decomposer_components) + self.targets_global_median[None, :]
-            normalized_postprocessed_y_pred_detached = targets_values_normalize_torch(postprocessed_y_pred.detach())
+            normalized_postprocessed_y_pred_detached = row_normalize(postprocessed_y_pred.detach())
             y_res = normalized_y - normalized_postprocessed_y_pred_detached
             y_total_pred = normalized_postprocessed_y_pred_detached + y_res_pred
-            loss_corr = loss_corr + self.correl_loss_func(postprocessed_y_pred, y)
+            loss_corr = loss_corr + self.correlation_loss_func(postprocessed_y_pred, y)
             loss_mse = loss_mse + self.mse_loss_func(y_pred, preprocessed_y)
             loss_res = loss_res + self.mse_loss_func(y_res, y_res_pred)
-            loss_total_corr = loss_total_corr + self.correl_loss_func(y_total_pred, y)
+            loss_total_corr = loss_total_corr + self.correlation_loss_func(y_total_pred, y)
         w = (1 - training_length_ratio)**2
         loss_corr /= len(y_preds)
         loss = loss + loss_corr
@@ -112,9 +112,9 @@ class MultiEncoderDecoderModule(nn.Module):
         y_preds, y_res_preds = self(x, gender_id, info)
         postprocessed_y_pred = None
         for i in range(len(y_preds)):
-            new_postprocessed_y_pred = targets_values_normalize_torch(torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :])
+            new_postprocessed_y_pred = row_normalize(torch.matmul(y_preds[i], self.targets_decomposer_components) + self.targets_global_median[None, :])
             new_postprocessed_y_pred += y_res_preds[i]
-            new_postprocessed_y_pred = targets_values_normalize_torch(new_postprocessed_y_pred)
+            new_postprocessed_y_pred = row_normalize(new_postprocessed_y_pred)
             if postprocessed_y_pred is None:
                 postprocessed_y_pred = new_postprocessed_y_pred
             else:
