@@ -1,4 +1,3 @@
-# original notebook is https://www.kaggle.com/code/fabiencrom/multimodal-single-cell-creating-sparse-data/
 import argparse
 import os
 
