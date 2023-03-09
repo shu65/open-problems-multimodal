@@ -16,9 +16,9 @@ In addtion, download the following data
 compress kaggle dataset and make addtional data to use in training
 ```shell
 export DATA_DIR=/path/to/kaggle/dataset/Directory
-python3 scripts/make_compressed_dataset.py --data_dir ${DATA_DIR}
-python3 scripts/make_additional_files.py --data_dir ${DATA_DIR}
-python3 scripts/make_cite_input_mask.py --data_dir ${DATA_DIR} --hgnc_complete_set_path /path/hgnc_complete_set --reactome_pathways_path /path/reactome_pathways
+python3 script/make_compressed_dataset.py --data_dir ${DATA_DIR}
+python3 script/make_additional_files.py --data_dir ${DATA_DIR}
+python3 script/make_cite_input_mask.py --data_dir ${DATA_DIR} --hgnc_complete_set_path /path/to/hgnc_complete_set --reactome_pathways_path /path/to/reactome_pathways
 ```
 
 ## Training
