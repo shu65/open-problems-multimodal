@@ -11,7 +11,7 @@ import scipy.stats
 
 from ss_opm.utility.get_group_id import get_group_id
 from ss_opm.utility.nonzero_median_normalize import median_normalize
-from ss_opm.utility.targets_values_normalize import targets_values_normalize
+from ss_opm.utility.row_normalize import row_normalize
 
 
 def read_reactome_gmt(file_path):
@@ -231,7 +231,7 @@ def main():
 
     targets_values = scipy.sparse.load_npz(os.path.join(data_dir, "train_cite_targets_values.sparse.npz"))
     targets_values = targets_values.toarray()
-    targets_values = targets_values_normalize(targets_values)
+    targets_values = row_normalize(targets_values)
 
     inputs_index = np.load(os.path.join(data_dir, inputs_idxcol_path), allow_pickle=True)["index"]
 
